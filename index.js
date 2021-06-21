@@ -1,45 +1,80 @@
 const redux = require('redux');
-const { createStore, applyMiddleware } = redux;
 const { logger } = require('redux-logger');
 const thunkMiddleware = require('redux-thunk').default;
-const middlewares = [logger, thunkMiddleware];
 const axios = require('axios');
+const { createStore, applyMiddleware } = redux;
+const middlewares = [logger, thunkMiddleware];
 
 // Action types
-const INC_COUNTER = 'INC_COUNTER';
-const DEC_COUNTER = 'DEC_COUNTER';
+const FETCH_USERS_REQUEST = 'FETCH_USERS_REQUEST';
+const FETCH_USERS_SUCCESS = 'FETCH_USERS_SUCCESS';
+const FETCH_USERS_FAILURE = 'FETCH_USERS_FAILURE';
 
-// Action creators
-const incCounter = () => ({ type: INC_COUNTER });
-const decCounter = () => ({ type: DEC_COUNTER });
+const fetchUsersRequest = () => {
+  return {
+    type: FETCH_USERS_REQUEST,
+    loading: false
+  }
+}
+
+const fetchUsersSuccess = (users) => {
+  return {
+    type: FETCH_USERS_SUCCESS,
+    payload: users,
+    loading: true
+  }
+}
+
+const fetchUsersFailure = (msg) => {
+  return {
+    type: FETCH_USERS_FAILURE,
+    payload: msg,
+    loading: true
+  }
+}
 
 const requestUsers = () => {
   const url = 'https://jsonplaceholder.typicode.com/users';
   return function(dispatch) {
+    dispatch(fetchUsersRequest());
     axios(url)
     .then(response => {
-      console.log(response)
+      const users = response.data;
+      dispatch(fetchUsersSuccess(users));
     })
     .catch(err => {
-      console.log(err)
+      dispatch(fetchUsersFailure(err.message));
     });
   }
 }
 
 // Reducer
-const initialState = { counter: 0 }
+const initialState = {
+  loading: false,
+  users: [],
+  error: ''
+}
 
 const reducer = (state = initialState, action) => {
   switch(action.type) {
-    case INC_COUNTER:
+    case FETCH_USERS_REQUEST:
       return {
         ...state,
-        counter: state.counter + 1
+        loading: false
       }
-    case DEC_COUNTER:
+    case FETCH_USERS_SUCCESS:
       return {
         ...state,
-        counter: state.counter - 1
+        users: action.payload,
+        error: '',
+        loading: true
+      }
+    case FETCH_USERS_FAILURE:
+      return {
+        ...state,
+        error: action.payload,
+        users: [],
+        loading: true
       }
     default:
       return state
@@ -50,5 +85,3 @@ const reducer = (state = initialState, action) => {
 const store = createStore(reducer, applyMiddleware(...middlewares));
 
 store.dispatch(requestUsers());
-
-store.dispatch(incCounter());
